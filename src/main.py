@@ -55,16 +55,11 @@ def task_controller1 ():
     
     while True:
         #Move the motor to set position at set gain         
-        starttime=time.ticks_ms()
-        timeelapsed=0
-        print("End")
-        
-        while(timeelapsed < 1000):
-            timeelapsed=time.ticks_ms()-starttime
-            enc.update()
-            pwm = list(closedloop.run(enc.read()))
-            motor.set_duty_cycle(pwm[0])
-            time.sleep_ms(10)
+    
+        enc.update()
+        pwm = list(closedloop.run(enc.read()))
+        motor.set_duty_cycle(pwm[0])
+        time.sleep_ms(10)
             
         closedloop.results(pwm[1], pwm[2])
         #time.sleep(3)
@@ -80,7 +75,9 @@ def task_controller1 ():
 # printouts show diagnostic information about the tasks, share, and queue.
 if __name__ == "__main__":
     #print ('\033[2JTesting ME405 stuff in cotask.py and task_share.py\r\n'
-     #      'Press ENTER to stop and show diagnostics.')
+     #      'Press ENTER to stop and show diagnostics.') 
+    startTime = time.ticks_ms()
+    timeElapsed = time.ticks_ms() - startTime
 
     # Create a share and a queue to test function and diagnostic printouts
     share0 = task_share.Share ('h', thread_protect = False, name = "Share 0")
@@ -108,7 +105,8 @@ if __name__ == "__main__":
     # Run the scheduler with the chosen scheduling algorithm. Quit if any 
     # character is received through the serial port
     vcp = pyb.USB_VCP ()
-    while not vcp.any ():
+    #while not vcp.any ():
+    while timeElapsed < 2500:
         cotask.task_list.pri_sched ()
 
     # Empty the comm port buffer of the character(s) just pressed
