@@ -10,6 +10,9 @@
     Public License, Version 2. 
 """
 
+from closedloop import ClosedLoop
+from encoder import Encoder
+from motordriver import MotorDriver
 import gc
 import pyb
 import cotask
@@ -43,6 +46,30 @@ def task2_fun ():
         yield (0)
 
 
+def task_controller ():
+    
+    enc = Encoder(pyb.Pin.board.PB6, pyb.Pin.board.PB7, 4)
+    closedloop = ClosedLoop(10000, 0.03)
+    motor = MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5, 3)
+    
+    while True:
+        #Move the motor to set position at set gain         
+        starttime=time.ticks_ms()
+        timeelapsed=0
+        
+        while(timeelapsed < 2000):
+            timeelapsed=time.ticks_ms()-starttime
+            enc.update()
+            pwm = list(closedloop.run(enc.read()))
+            motor.set_duty_cycle(pwm[0])
+            time.sleep_ms(10)
+            
+        closedloop.results(pwm[1], pwm[2])
+        enc.zero()
+        
+        yield (0)
+        
+
 # This code creates a share, a queue, and two tasks, then starts the tasks. The
 # tasks run until somebody presses ENTER, at which time the scheduler stops and
 # printouts show diagnostic information about the tasks, share, and queue.
@@ -59,12 +86,15 @@ if __name__ == "__main__":
     # allocated for state transition tracing, and the application will run out
     # of memory after a while and quit. Therefore, use tracing only for 
     # debugging and set trace to False when it's not needed
-    task1 = cotask.Task (task1_fun, name = 'Task_1', priority = 1, 
-                         period = 400, profile = True, trace = False)
-    task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
-                         period = 1500, profile = True, trace = False)
-    cotask.task_list.append (task1)
-    cotask.task_list.append (task2)
+    #task1 = cotask.Task (task1_fun, name = 'Task_1', priority = 1, 
+     #                    period = 400, profile = True, trace = False)
+    #task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
+      #                   period = 1500, profile = True, trace = False)
+    task3 = cotask.Task (task_controller, name = 'Task_3', priority = 3, 
+                         period = 10, profile = True, trace = False)
+    #cotask.task_list.append (task1)
+    #cotask.task_list.append (task2)
+    cotask.task_list.append (task3)
 
     # Run the memory garbage collector to ensure memory is as defragmented as
     # possible before the real-time scheduler is started
@@ -82,5 +112,5 @@ if __name__ == "__main__":
     # Print a table of task data and a table of shared information data
     print ('\n' + str (cotask.task_list))
     print (task_share.show_all ())
-    print (task1.get_trace ())
+    #print (task1.get_trace ())
     print ('\r\n')
