@@ -17,6 +17,7 @@ import gc
 import pyb
 import cotask
 import task_share
+import time
 
 
 def task1_fun ():
@@ -46,18 +47,19 @@ def task2_fun ():
         yield (0)
 
 
-def task_controller ():
+def task_controller1 ():
     
     enc = Encoder(pyb.Pin.board.PB6, pyb.Pin.board.PB7, 4)
-    closedloop = ClosedLoop(10000, 0.03)
+    closedloop = ClosedLoop(10000, 0.1)
     motor = MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5, 3)
     
     while True:
         #Move the motor to set position at set gain         
         starttime=time.ticks_ms()
         timeelapsed=0
+        print("End")
         
-        while(timeelapsed < 2000):
+        while(timeelapsed < 1000):
             timeelapsed=time.ticks_ms()-starttime
             enc.update()
             pwm = list(closedloop.run(enc.read()))
@@ -65,7 +67,10 @@ def task_controller ():
             time.sleep_ms(10)
             
         closedloop.results(pwm[1], pwm[2])
+        #time.sleep(3)
+        print("End")
         enc.zero()
+        time.sleep(6)
         
         yield (0)
         
@@ -74,8 +79,8 @@ def task_controller ():
 # tasks run until somebody presses ENTER, at which time the scheduler stops and
 # printouts show diagnostic information about the tasks, share, and queue.
 if __name__ == "__main__":
-    print ('\033[2JTesting ME405 stuff in cotask.py and task_share.py\r\n'
-           'Press ENTER to stop and show diagnostics.')
+    #print ('\033[2JTesting ME405 stuff in cotask.py and task_share.py\r\n'
+     #      'Press ENTER to stop and show diagnostics.')
 
     # Create a share and a queue to test function and diagnostic printouts
     share0 = task_share.Share ('h', thread_protect = False, name = "Share 0")
@@ -90,11 +95,11 @@ if __name__ == "__main__":
      #                    period = 400, profile = True, trace = False)
     #task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
       #                   period = 1500, profile = True, trace = False)
-    task3 = cotask.Task (task_controller, name = 'Task_3', priority = 3, 
+    task1 = cotask.Task (task_controller1, name = 'Task_1', priority = 1, 
                          period = 10, profile = True, trace = False)
     #cotask.task_list.append (task1)
     #cotask.task_list.append (task2)
-    cotask.task_list.append (task3)
+    cotask.task_list.append (task1)
 
     # Run the memory garbage collector to ensure memory is as defragmented as
     # possible before the real-time scheduler is started
