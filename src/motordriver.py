@@ -19,32 +19,31 @@ class MotorDriver:
         pins and turning the motor off for safety. 
         @param en_pin EN pin associated with L6206 motor driver
         @param in1pin IN1 pin associated with L6026 motor driver
-        @param in2pin IN2 pin associated with l6026 motor driver
+        @param in2pin IN2 pin associated with L6026 motor driver
         @param timer Timer pin for PWM
         '''
         
-        ## Reference for pin object for A10
-        self.pinPA10 = pyb.Pin (en_pin, pyb.Pin.IN, pull=pyb.Pin.PULL_UP)
+        ## Reference for pin object for enable pin
+        self.enable = pyb.Pin (en_pin, pyb.Pin.OPEN_DRAIN, pull=pyb.Pin.PULL_UP)
         
-        ## Reference for pin object for B4
-        self.pinPB4 = pyb.Pin (in1pin, pyb.Pin.OUT_PP)
+        ## Reference for pin object for first motor pin
+        self.pin1 = pyb.Pin (in1pin, pyb.Pin.OUT_PP)
         
-        ## Reference for pin object for B5
-        self.pinPB5 = pyb.Pin (in2pin, pyb.Pin.OUT_PP)
+        ## Reference for pin object for second motor pin
+        self.pin2 = pyb.Pin (in2pin, pyb.Pin.OUT_PP)
         
-        ## Reference for timer object tim3
-        self.tim3 = pyb.Timer(timer, freq=20000)
+        ## Reference for timer object tim
+        self.tim = pyb.Timer(timer, freq=20000)
         
-        ## Reference for timer 3 channel 1
-        self.IN1 = self.tim3.channel(1, pyb.Timer.PWM, pin=self.pinPB4)
+        ## Reference for timer channel 1
+        self.IN1 = self.tim.channel(1, pyb.Timer.PWM, pin=self.pin1)
         
-        ## Reference for timer 3 channel 2
-        self.IN2 = self.tim3.channel(2, pyb.Timer.PWM, pin=self.pinPB5)
+        ## Reference for timer channel 2
+        self.IN2 = self.tim.channel(2, pyb.Timer.PWM, pin=self.pin2)
         
         # disables motor
-        self.pinPA10.low()
-        
-        #print ('Creating a motor driver')
+        self.enable.low()
+        print ('Creating a motor driver')
 
     def set_duty_cycle (self, level):
         '''!
@@ -57,16 +56,15 @@ class MotorDriver:
         '''
         
         # enables motor
-        self.pinPA10.high()
+        self.enable.high()
         
         # changes direction of motor depending on if level is positive or negative
         if (level > 0):
-            
-            self.IN2.pulse_width_percent(0)
-            self.IN1.pulse_width_percent(abs(level))
-        elif (level < 0):
-            self.IN2.pulse_width_percent(abs(level))
             self.IN1.pulse_width_percent(0)
+            self.IN2.pulse_width_percent(abs(level))
+        elif (level < 0):
+            self.IN1.pulse_width_percent(abs(level))
+            self.IN2.pulse_width_percent(0)
             
         #print ('Setting duty cycle to ' + str (level))
 
@@ -74,7 +72,8 @@ class MotorDriver:
 
 if __name__ == "__main__":
     driver = MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5, 3)
+    driver2 = MotorDriver(pyb.Pin.board.PC1, pyb.Pin.board.PA0, pyb.Pin.board.PA1, 5)
+    
+    print("loop")
     driver.set_duty_cycle(0)
-
-
-
+    driver2.set_duty_cycle(40)

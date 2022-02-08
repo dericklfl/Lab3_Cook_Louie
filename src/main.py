@@ -1,10 +1,8 @@
 """!
-@file basic_tasks.py
-    This file contains a demonstration program that runs some tasks, an
-    inter-task shared variable, and a queue. The tasks don't really @b do
-    anything; the example just shows how these elements are created and run.
+@file main.py
+    This file contains task definitions to run motors in closed loop.
 @author JR Ridgely
-@date   2021-Dec-15 JRR Created from the remains of previous example
+@date   February 7, 2022
 @copyright (c) 2015-2021 by JR Ridgely and released under the GNU
     Public License, Version 2. 
 """
@@ -13,70 +11,118 @@ import gc
 import pyb
 import cotask
 import task_share
+from closedloop import ClosedLoop
+from encoder import Encoder
+from motordriver import MotorDriver
 import time
 
 
-def task1_fun ():
-    """!
-    Task which puts things into a share and a queue.
-    """
-    counter = 0
-    while True:
-        share0.put (counter)
-        q0.put (counter)
-        counter += 1
+# def task1_fun ():
+#     """!
+#     Task which puts things into a share and a queue.
+#     """
+#     counter = 0
+#     while True:
+#         share0.put (counter)
+#         q0.put (counter)
+#         counter += 1
+# 
+#         yield (0)
+# 
+# 
+# def task2_fun ():
+#     """!
+#     Task which takes things out of a queue and share to display.
+#     """
+#     while True:
+#         # Show everything currently in the queue and the value in the share
+#         print ("Share: {:}, Queue: ".format (share0.get ()), end='');
+#         while q0.any ():
+#             print ("{:} ".format (q0.get ()), end='')
+#         print ('')
+# 
+#         yield (0)
 
-        yield (0)
-
-
-def task2_fun ():
-    """!
-    Task which takes things out of a queue and share to display.
-    """
-    while True:
-        # Show everything currently in the queue and the value in the share
-        print ("Share: {:}, Queue: ".format (share0.get ()), end='');
-        while q0.any ():
-            print ("{:} ".format (q0.get ()), end='')
-        print ('')
-
-        yield (0)
-
-<<<<<<< HEAD
 def task_controller():
-=======
-
-def task_controller1 ():
->>>>>>> eb3e8fdf669ec3c9df3732b321f95e737e818bd7
+    '''! 
+    This task implements a closed loop controller for the first motor that is able to run simultaneously with other tasks
+    '''
     
+    ## Encoder object using pins PB6, PB7 and timer 4
     enc = Encoder(pyb.Pin.board.PB6, pyb.Pin.board.PB7, 4)
-    closedloop = ClosedLoop(10000, 0.1)
+    
+    closedloop = ClosedLoop(enc, 20000, 0.05)
+    
     motor = MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5, 3)
     
-    while True:
-        #Move the motor to set position at set gain         
+    timeelapsed = 0
     
-        enc.update()
-        pwm = list(closedloop.run(enc.read()))
-        motor.set_duty_cycle(pwm[0])
-        time.sleep_ms(10)
-            
-        closedloop.results(pwm[1], pwm[2])
-        #time.sleep(3)
-        print("End")
-        enc.zero()
-        time.sleep(6)
+    ## Boolean to indicate if full set of data has been printed
+    printed = False
+    
+    while True:
         
-        yield (0)
+        if input() or (share0.get() == 1):
+            share0.put(1)
+            starttime = time.ticks_ms()
+            while timeelapsed < 2000:
+                timeelapsed = time.ticks_ms() - starttime
+                
+                #Move the motor to set position at set gain         
+                
+                enc.update()
+                #print("t1", enc.read())
+                pwm = list(closedloop.run(enc.read()))
+                motor.set_duty_cycle(pwm[0])
+                #time.sleep_ms(10)
 
+                yield (0)
+                
+        if not printed:
+            printed = True
+            closedloop.results(pwm[1], pwm[2])
+            print("End")
+        yield(0)
+           
+def task_controller2():
+    '''! 
+    This task implements a closed loop controller for the first motor that is able to run simultaneously with other tasks
+    '''
+    ## Encoder object using pins PC6, PC7 and timer 8
+    enc = Encoder(pyb.Pin.board.PC6, pyb.Pin.board.PC7, 8)
+    closedloop = ClosedLoop(enc, 30000, 0.05)
+    motor = MotorDriver(pyb.Pin.board.PC1, pyb.Pin.board.PA0, pyb.Pin.board.PA1, 5)
+    timeelapsed = 0
+    
+    ## Boolean to indicate if full set of data has been printed
+    printed = False
+    
+    while True:
+        if (share0.get() == 1):
+            share0.put(1)
+            starttime = time.ticks_ms()
+            while timeelapsed < 2000:
+                timeelapsed = time.ticks_ms() - starttime
+                
+                #Move the motor to set position at set gain         
+            
+                enc.update()
+                #print("t2", enc.read())
+                pwm = list(closedloop.run(enc.read()))
+                motor.set_duty_cycle(pwm[0])
+                yield (0)
+        
+
+        if not printed:
+            printed = True
+            closedloop.results(pwm[1], pwm[2])
+            print("End")
+        yield(0)
+        
 # This code creates a share, a queue, and two tasks, then starts the tasks. The
 # tasks run until somebody presses ENTER, at which time the scheduler stops and
 # printouts show diagnostic information about the tasks, share, and queue.
 if __name__ == "__main__":
-    #print ('\033[2JTesting ME405 stuff in cotask.py and task_share.py\r\n'
-     #      'Press ENTER to stop and show diagnostics.') 
-    startTime = time.ticks_ms()
-    timeElapsed = time.ticks_ms() - startTime
 
     # Create a share and a queue to test function and diagnostic printouts
     share0 = task_share.Share ('h', thread_protect = False, name = "Share 0")
@@ -87,21 +133,12 @@ if __name__ == "__main__":
     # allocated for state transition tracing, and the application will run out
     # of memory after a while and quit. Therefore, use tracing only for 
     # debugging and set trace to False when it's not needed
-    task1 = cotask.Task (task1_fun, name = 'Task_1', priority = 1, 
-                         period = 400, profile = True, trace = False)
-    #task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
-<<<<<<< HEAD
-    #                     period = 1500, profile = True, trace = False)
+    task1 = cotask.Task (task_controller, name = 'Task_1', priority = 1, 
+                          period = 10, profile = True, trace = False)
+    task2 = cotask.Task (task_controller2, name = 'Task_2', priority = 1,
+                          period = 10, profile = True, trace = False)
     cotask.task_list.append (task1)
-    #cotask.task_list.append (task2)
-=======
-      #                   period = 1500, profile = True, trace = False)
-    task1 = cotask.Task (task_controller1, name = 'Task_1', priority = 1, 
-                         period = 10, profile = True, trace = False)
-    #cotask.task_list.append (task1)
-    #cotask.task_list.append (task2)
-    cotask.task_list.append (task1)
->>>>>>> eb3e8fdf669ec3c9df3732b321f95e737e818bd7
+    cotask.task_list.append (task2)
 
     # Run the memory garbage collector to ensure memory is as defragmented as
     # possible before the real-time scheduler is started
@@ -111,9 +148,10 @@ if __name__ == "__main__":
     # character is received through the serial port
     vcp = pyb.USB_VCP ()
     #while not vcp.any ():
-    while timeElapsed < 2500:
+    #    cotask.task_list.pri_sched ()
+    
+    while True:
         cotask.task_list.pri_sched ()
-
     # Empty the comm port buffer of the character(s) just pressed
     vcp.read ()
 
